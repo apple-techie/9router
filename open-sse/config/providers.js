@@ -33,16 +33,17 @@ export const PROVIDERS = {
   claude: {
     baseUrl: "https://api.anthropic.com/v1/messages",
     format: "claude",
+    retry: { 429: 0 },
     headers: {
       "Anthropic-Version": "2023-06-01",
-      "Anthropic-Beta": "claude-code-20250219,oauth-2025-04-20,interleaved-thinking-2025-05-14,fine-grained-tool-streaming-2025-05-14,context-management-2025-06-27,prompt-caching-scope-2026-01-05",
+      "Anthropic-Beta": "claude-code-20250219,oauth-2025-04-20,interleaved-thinking-2025-05-14,context-management-2025-06-27,prompt-caching-scope-2026-01-05,advanced-tool-use-2025-11-20,effort-2025-11-24,structured-outputs-2025-12-15,fast-mode-2026-02-01,redact-thinking-2026-02-12,token-efficient-tools-2026-03-28",
       "Anthropic-Dangerous-Direct-Browser-Access": "true",
-      "User-Agent": "claude-cli/2.1.63 (external, cli)",
+      "User-Agent": "claude-cli/2.1.92 (external, sdk-cli)",
       "X-App": "cli",
       "X-Stainless-Helper-Method": "stream",
       "X-Stainless-Retry-Count": "0",
-      "X-Stainless-Runtime-Version": "v24.3.0",
-      "X-Stainless-Package-Version": "0.74.0",
+      "X-Stainless-Runtime-Version": "v24.14.0",
+      "X-Stainless-Package-Version": "0.80.0",
       "X-Stainless-Runtime": "node",
       "X-Stainless-Lang": "js",
       "X-Stainless-Arch": mapStainlessArch(),
@@ -78,10 +79,6 @@ export const PROVIDERS = {
   qwen: {
     baseUrl: "https://portal.qwen.ai/v1/chat/completions",
     format: "openai",
-    headers: {
-      "User-Agent": "google-api-nodejs-client/9.15.1",
-      "X-Goog-Api-Client": "gl-node/22.17.0"
-    },
     clientId: "f0304373b74a44d2b584a3fb70ca9e56",
     tokenUrl: "https://chat.qwen.ai/api/v1/oauth2/token",
     authUrl: "https://chat.qwen.ai/api/v1/oauth2/device/code"
@@ -94,6 +91,15 @@ export const PROVIDERS = {
     clientSecret: "4Z3YjXycVsQvyGF1etiNlIBB4RsqSDtW",
     tokenUrl: "https://iflow.cn/oauth/token",
     authUrl: "https://iflow.cn/oauth"
+  },
+  qoder: {
+    baseUrl: "https://api.qoder.com/v1/chat/completions",
+    format: "openai",
+    headers: { "User-Agent": "Qoder-Cli" },
+    clientId: process.env.QODER_OAUTH_CLIENT_ID || "10009311001",
+    clientSecret: process.env.QODER_OAUTH_CLIENT_SECRET || "4Z3YjXycVsQvyGF1etiNlIBB4RsqSDtW",
+    tokenUrl: "https://api.qoder.com/oauth/token",
+    authUrl: "https://qoder.com/oauth/authorize"
   },
   antigravity: {
     baseUrls: [
@@ -167,7 +173,8 @@ export const PROVIDERS = {
       "X-Initiator": "user",
       "Accept": "application/json",
       "Content-Type": "application/json"
-    }
+    },
+    clientId: "Iv1.b507a08c87ecfe98"
   },
   kiro: {
     baseUrl: "https://codewhisperer.us-east-1.amazonaws.com/generateAssistantResponse",
@@ -204,6 +211,11 @@ export const PROVIDERS = {
   },
   kilocode: {
     baseUrl: "https://api.kilo.ai/api/openrouter/chat/completions",
+    format: "openai",
+    headers: {}
+  },
+  opencode: {
+    baseUrl: "http://localhost:4096/v1/chat/completions",
     format: "openai",
     headers: {}
   },
@@ -302,12 +314,27 @@ export const PROVIDERS = {
   // baseUrl is not used; VertexExecutor.buildUrl() constructs it dynamically
   vertex: {
     baseUrl: "https://aiplatform.googleapis.com",
-    format: "gemini"
+    format: "vertex"
   },
   // Vertex AI - Partner models (Claude, Llama, Mistral, GLM) via SA JSON
   // Uses OpenAI-compatible global endpoint (or rawPredict for Anthropic)
   "vertex-partner": {
     baseUrl: "https://aiplatform.googleapis.com",
     format: "openai"
+  },
+  // GitLab Duo - OpenAI-compatible chat endpoint
+  gitlab: {
+    baseUrl: "https://gitlab.com/api/v4/chat/completions",
+    format: "openai",
+  },
+  // CodeBuddy (Tencent) - uses device_code polling auth, no chat completions baseUrl needed
+  codebuddy: {
+    baseUrl: "https://copilot.tencent.com/v1/chat/completions",
+    format: "openai",
+  },
+  opencode: {
+    baseUrl: "https://opencode.ai",
+    format: "openai",
+    headers: { "x-opencode-client": "desktop" }
   },
 };

@@ -24,7 +24,7 @@ export default function CLIToolsPageClient({ machineId }) {
   const [modelMappings, setModelMappings] = useState({});
   const [cloudEnabled, setCloudEnabled] = useState(false);
   const [tunnelEnabled, setTunnelEnabled] = useState(false);
-  const [tunnelUrl, setTunnelUrl] = useState("");
+  const [tunnelPublicUrl, setTunnelPublicUrl] = useState("");
   const [apiKeys, setApiKeys] = useState([]);
   const [toolStatuses, setToolStatuses] = useState({});
 
@@ -67,7 +67,7 @@ export default function CLIToolsPageClient({ machineId }) {
       if (tunnelRes.ok) {
         const data = await tunnelRes.json();
         setTunnelEnabled(data.enabled || false);
-        setTunnelUrl(data.tunnelUrl || "");
+        setTunnelPublicUrl(data.publicUrl || "");
       }
     } catch (error) {
       console.log("Error loading settings:", error);
@@ -128,7 +128,7 @@ export default function CLIToolsPageClient({ machineId }) {
   }, []);
 
   const getBaseUrl = () => {
-    if (tunnelEnabled && tunnelUrl) return tunnelUrl;
+    if (tunnelEnabled && tunnelPublicUrl) return tunnelPublicUrl;
     if (cloudEnabled && CLOUD_URL) return CLOUD_URL;
     if (typeof window !== "undefined") return window.location.origin;
     return "http://localhost:20128";
@@ -187,7 +187,7 @@ export default function CLIToolsPageClient({ machineId }) {
 
   return (
     <div className="flex flex-col gap-6">
-      {!hasActiveProviders && (
+      {/* {!hasActiveProviders && (
         <Card className="border-yellow-500/50 bg-yellow-500/5">
           <div className="flex items-center gap-3">
             <span className="material-symbols-outlined text-yellow-500">warning</span>
@@ -197,7 +197,7 @@ export default function CLIToolsPageClient({ machineId }) {
             </div>
           </div>
         </Card>
-      )}
+      )} */}
       <div className="flex flex-col gap-4">
         {regularTools.map(([toolId, tool]) => renderToolCard(toolId, tool))}
       </div>
