@@ -1,4 +1,5 @@
 import { PROVIDERS } from "./providers.js";
+import { buildTtsProviderModels } from "./ttsModels.js";
 
 // Provider models - Single source of truth
 // Key = alias (cc, cx, gc, qw, if, ag, gh for OAuth; id for API Key)
@@ -7,6 +8,7 @@ import { PROVIDERS } from "./providers.js";
 export const PROVIDER_MODELS = {
   // OAuth Providers (using alias)
   cc: [  // Claude Code
+    { id: "claude-opus-4-7", name: "Claude Opus 4.7" },
     { id: "claude-opus-4-6", name: "Claude Opus 4.6" },
     { id: "claude-sonnet-4-6", name: "Claude Sonnet 4.6" },
     { id: "claude-opus-4-5-20251101", name: "Claude 4.5 Opus" },
@@ -43,7 +45,7 @@ export const PROVIDER_MODELS = {
     { id: "qwen3-coder-plus", name: "Qwen3 Coder Plus" },
     { id: "qwen3-coder-flash", name: "Qwen3 Coder Flash" },
     { id: "vision-model", name: "Qwen3 Vision Model" },
-    { id: "coder-model", name: "Qwen3.5 Coder Model" },
+    { id: "coder-model", name: "Qwen3.6 Coder Model" },
   ],
   if: [  // iFlow AI
     { id: "qwen3-coder-plus", name: "Qwen3 Coder Plus" },
@@ -110,6 +112,8 @@ export const PROVIDER_MODELS = {
     { id: "deepseek-3.2", name: "DeepSeek 3.2", strip: ["image", "audio"] },
     { id: "deepseek-3.1", name: "DeepSeek 3.1", strip: ["image", "audio"] },
     { id: "qwen3-coder-next", name: "Qwen3 Coder Next", strip: ["image", "audio"] },
+    { id: "glm-5", name: "GLM 5" },
+    { id: "MiniMax-M2.5", name: "MiniMax M2.5" },
   ],
   cu: [  // Cursor IDE
     { id: "default", name: "Auto (Server Picks)" },
@@ -143,13 +147,15 @@ export const PROVIDER_MODELS = {
     { id: "deepseek/deepseek-reasoner", name: "DeepSeek Reasoner" },
   ],
   oc: [  // OpenCode
-    { id: "nemotron-3-super-free", name: "Nemotron 3 Super" },
-    { id: "qwen3.6-plus-free", name: "Qwen 3.6 Plus" },
+    // { id: "nemotron-3-super-free", name: "Nemotron 3 Super" },
+    // { id: "qwen3.6-plus-free", name: "Qwen 3.6 Plus" },
     // { id: "big-pickle", name: "Big Pickle", targetFormat: "claude" },
-    { id: "minimax-m2.5-free", name: "MiniMax M2.5", targetFormat: "claude" },
+    // { id: "minimax-m2.5-free", name: "MiniMax M2.5", targetFormat: "claude" },
+    // { id: "trinity-large-preview-free", name: "Trinity Large Preview" },
   ],
 
   cl: [  // Cline
+    { id: "anthropic/claude-opus-4.7", name: "Claude Opus 4.7" },
     { id: "anthropic/claude-sonnet-4.6", name: "Claude Sonnet 4.6" },
     { id: "anthropic/claude-opus-4.6", name: "Claude Opus 4.6" },
     { id: "openai/gpt-5.3-codex", name: "GPT-5.3 Codex" },
@@ -211,13 +217,28 @@ export const PROVIDER_MODELS = {
     // Gemini 2.0 series (retiring June 1, 2026)
     { id: "gemini-2.0-flash", name: "Gemini 2.0 Flash" },
     { id: "gemini-2.0-flash-lite", name: "Gemini 2.0 Flash Lite" },
+    { id: "gemma-4-31b-it", name: "Gemma 4 31B IT" },
+
     // Embedding models
     { id: "gemini-embedding-2-preview", name: "Gemini Embedding 2 Preview", type: "embedding" },
     { id: "gemini-embedding-001", name: "Gemini Embedding 001", type: "embedding" },
     { id: "text-embedding-005", name: "Text Embedding 005", type: "embedding" },
     { id: "text-embedding-004", name: "Text Embedding 004 (Legacy)", type: "embedding" },
   ],
-  openrouter: [],
+  openrouter: [
+    // Embedding models
+    { id: "openai/text-embedding-3-large", name: "OpenAI Text Embedding 3 Large", type: "embedding" },
+    { id: "openai/text-embedding-3-small", name: "OpenAI Text Embedding 3 Small", type: "embedding" },
+    { id: "openai/text-embedding-ada-002", name: "OpenAI Text Embedding Ada 002", type: "embedding" },
+    { id: "qwen/qwen3-embedding-8b", name: "Qwen3 Embedding 8B", type: "embedding" },
+    { id: "perplexity/pplx-embed-v1-4b", name: "Perplexity Embed V1 4B", type: "embedding" },
+    { id: "perplexity/pplx-embed-v1-0.6b", name: "Perplexity Embed V1 0.6B", type: "embedding" },
+    { id: "nvidia/llama-nemotron-embed-vl-1b-v2:free", name: "NVIDIA Nemotron Embed VL 1B V2 (Free)", type: "embedding" },
+    // TTS models
+    { id: "openai/gpt-4o-mini-tts", name: "GPT-4o Mini TTS", type: "tts" },
+    { id: "openai/tts-1-hd",        name: "TTS-1 HD",        type: "tts" },
+    { id: "openai/tts-1",           name: "TTS-1",           type: "tts" },
+  ],
   glm: [
     { id: "glm-5.1", name: "GLM 5.1" },
     { id: "glm-5", name: "GLM 5" },
@@ -240,6 +261,25 @@ export const PROVIDER_MODELS = {
     { id: "MiniMax-M2.7", name: "MiniMax M2.7" },
     { id: "MiniMax-M2.5", name: "MiniMax M2.5" },
     { id: "MiniMax-M2.1", name: "MiniMax M2.1" },
+  ],
+  blackbox: [
+    { id: "gpt-4o", name: "GPT-4o" },
+    { id: "gpt-4o-mini", name: "GPT-4o mini" },
+    { id: "claude-sonnet-4.6", name: "Claude Sonnet 4.6" },
+    { id: "claude-sonnet-4.5", name: "Claude Sonnet 4.5" },
+    { id: "claude-opus-4.6", name: "Claude Opus 4.6" },
+    { id: "claude-sonnet-4-6", name: "Claude Sonnet 4.6 (Legacy)" },
+    { id: "claude-opus-4-6", name: "Claude Opus 4.6 (Legacy)" },
+    { id: "deepseek-chat", name: "DeepSeek Chat" },
+    { id: "deepseek-v3-671b", name: "DeepSeek V3 671B" },
+    { id: "deepseek-r1", name: "DeepSeek R1" },
+    { id: "o1", name: "OpenAI o1" },
+    { id: "o3-mini", name: "OpenAI o3-mini" },
+    { id: "gemini-2.5-flash", name: "Gemini 2.5 Flash" },
+    { id: "gemini-3-flash-preview", name: "Gemini 3 Flash Preview" },
+    { id: "qwen3-coder-plus", name: "Qwen3 Coder Plus" },
+    { id: "qwen3-max", name: "Qwen3 Max" },
+    { id: "qwen3-vl-plus", name: "Qwen3 VL Plus" },
   ],
   "minimax-cn": [
     { id: "MiniMax-M2.7", name: "MiniMax M2.7" },
@@ -363,6 +403,9 @@ export const PROVIDER_MODELS = {
     { id: "qwen/qwen3-next-80b-a3b-instruct-maas", name: "Qwen3 Next 80B Instruct (Vertex)" },
     { id: "zai-org/glm-5-maas", name: "GLM-5 (Vertex)" },
   ],
+
+  // TTS entries are loaded from ttsModels.js via buildTtsProviderModels()
+  ...buildTtsProviderModels(),
 };
 
 // Helper functions

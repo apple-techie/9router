@@ -5,13 +5,44 @@ import { useMemo } from "react";
 import Link from "next/link";
 import PropTypes from "prop-types";
 import ProviderIcon from "@/shared/components/ProviderIcon";
-import { ThemeToggle, LanguageSwitcher } from "@/shared/components";
-import NineRemoteButton from "@/shared/components/NineRemoteButton";
+import HeaderMenu from "@/shared/components/HeaderMenu";
 import { OAUTH_PROVIDERS, APIKEY_PROVIDERS } from "@/shared/constants/config";
+import { MEDIA_PROVIDER_KINDS, AI_PROVIDERS } from "@/shared/constants/providers";
 import { translate } from "@/i18n/runtime";
 
 const getPageInfo = (pathname) => {
   if (!pathname) return { title: "", description: "", breadcrumbs: [] };
+
+  // Media provider detail: /dashboard/media-providers/[kind]/[id]
+  const mediaDetailMatch = pathname.match(/\/media-providers\/([^/]+)\/([^/]+)$/);
+  if (mediaDetailMatch) {
+    const kindId = mediaDetailMatch[1];
+    const providerId = mediaDetailMatch[2];
+    const kindConfig = MEDIA_PROVIDER_KINDS.find((k) => k.id === kindId);
+    const provider = AI_PROVIDERS[providerId];
+    return {
+      title: provider?.name || providerId,
+      description: "",
+      breadcrumbs: [
+        { label: "Media Providers", href: `/dashboard/media-providers/${kindId}` },
+        { label: kindConfig?.label || kindId, href: `/dashboard/media-providers/${kindId}` },
+        { label: provider?.name || providerId, image: `/providers/${providerId}.png` },
+      ],
+    };
+  }
+
+  // Media provider kind: /dashboard/media-providers/[kind]
+  const mediaKindMatch = pathname.match(/\/media-providers\/([^/]+)$/);
+  if (mediaKindMatch) {
+    const kindId = mediaKindMatch[1];
+    const kindConfig = MEDIA_PROVIDER_KINDS.find((k) => k.id === kindId);
+    return {
+      title: kindConfig?.label || kindId,
+      description: `Manage your ${kindConfig?.label || kindId} providers`,
+      icon: kindConfig?.icon || "perm_media",
+      breadcrumbs: [],
+    };
+  }
 
   // Provider detail page: /dashboard/providers/[id]
   const providerMatch = pathname.match(/\/providers\/([^/]+)$/);
@@ -34,7 +65,7 @@ const getPageInfo = (pathname) => {
     }
   }
 
-  if (pathname.includes("/providers"))
+  if (pathname.includes("/providers") && !pathname.includes("/media-providers"))
     return {
       title: "Providers",
       description: "Manage your AI provider connections",
@@ -217,25 +248,9 @@ export default function Header({ onMenuClick, showMenuButton = true }) {
         ) : null}
       </div>
 
-      {/* Right actions */}
-      <div className="flex items-center gap-3 ml-auto">
-        {/* 9Remote button */}
-        <NineRemoteButton />
-
-        {/* Language switcher */}
-        <LanguageSwitcher />
-
-        {/* Theme toggle */}
-        <ThemeToggle />
-
-        {/* Logout button */}
-        <button
-          onClick={handleLogout}
-          className="flex items-center justify-center p-2 rounded-lg text-text-muted hover:text-red-500 hover:bg-red-500/10 transition-all"
-          title="Logout"
-        >
-          <span className="material-symbols-outlined">logout</span>
-        </button>
+      {/* Right actions - consolidated into dropdown menu */}
+      <div className="flex items-center ml-auto">
+        <HeaderMenu onLogout={handleLogout} />
       </div>
     </header>
   );

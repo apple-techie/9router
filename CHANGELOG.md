@@ -1,3 +1,92 @@
+# v0.3.96 (2026-04-17)
+
+## Features
+- Add marked package for Markdown rendering
+- Enhance changelog styles
+
+## Improvements
+- Refactor error handling to config-driven approach with centralized error rules
+- Refactor localDb structure
+- Update Qwen executor for OAuth handling
+- Enhance error formatting to include low-level cause details
+- Refactor HeaderMenu to use MenuItem component
+- Improve LanguageSwitcher to support controlled open state
+- Update backoff configuration and improve CLI detection messages
+- Add installation guides for manual configuration in tool cards (Droid, Claude, OpenClaw)
+
+## Fixes
+- Fix Codex image URL fetches to await before sending upstream (#575)
+- Strip thinking/reasoning_effort for GitHub Copilot chat completions (#623)
+- Enable Codex Apply/Reset buttons when CLI is installed (#591)
+- Show manual config option when Claude CLI detection fails (#589)
+- Show manual config option when OpenClaw detection fails (#579)
+- Ensure LocalMutex acquire returns release callback correctly (#569)
+- Strip enumDescriptions from tool schema in antigravity-to-openai (#566)
+- Strip temperature parameter for gpt-5.4 model (#536)
+- Add Blackbox AI as a supported provider (#599)
+- Add multi-model support for Factory Droid CLI tool (#521)
+- Add GLM-5 and MiniMax-M2.5 models to Kiro provider (#580)
+- Fix usage tracking bug
+
+# v0.3.91 (2026-04-15)
+
+## Features
+- Add Kiro AWS Identity Center device flow for provider OAuth
+- Add TTS (Text-to-Speech) core handler and TTS models config
+- Add media providers dashboard page
+- Add suggested models API endpoint
+
+## Improvements
+- Refactor error handling to config-driven approach with centralized error rules
+- Refactor localDb and usageDb for cleaner structure
+
+## Fixes
+- Fix usage tracking bug
+
+# v0.3.90 (2026-04-14)
+
+## Features
+- Add proactive token refresh lead times for providers and Codex proxy management
+- Enhance CodexExecutor with compact URL support
+
+## Improvements
+- Enhance Windows Tailscale installation with curl support and fallback to well-known Windows path
+- Refactor execSync and spawn calls with windowsHide option for better Windows compatibility
+
+## Fixes
+- Fix noAuth support for providers and adjusted MITM restart settings
+- Bug fixes
+
+# v0.3.89 (2026-04-13)
+
+## Improvements
+- Improved dashboard access control by blocking tunnel/Tailscale access when disabled
+
+# v0.3.87 (2026-04-13)
+
+## Fixes
+- Fix codex cache session id
+
+# v0.3.86 (2026-04-13)
+
+## Features
+- Add provider models and thinking configurations for enhanced chat handling
+- Add Vercel relay support to proxy functionality
+- Add Vercel deploy endpoint for proxy pools management
+
+## Improvements
+- Enhance proxy functionality with new relay capabilities
+- Streamline GitHub Actions Docker publish workflow
+- Update Docker configuration and package management
+
+## Fixes
+- Remove obsolete 9remote installation/management APIs
+
+# v0.3.83 (2026-04-08)
+
+## Fixes
+- Fix OpenRouter custom models not showing after being added
+
 # Unreleased
 
 ## Features
