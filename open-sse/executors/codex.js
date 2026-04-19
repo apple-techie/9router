@@ -68,6 +68,39 @@ setInterval(() => {
   }
 }, 10 * 60 * 1000);
 
+// Codex strict-mode JSON Schema sanitizer.
+// Codex rejects: parameterless tools without {type:"object"}, and array
+// schemas missing `items` (e.g. tuples emitted as prefixItems-only by pydantic).
+// Common in MCP servers like @modelcontextprotocol/server-gitlab and mcp-server-docker.
+function ensureObjectSchema(schema) {
+  if (!schema || typeof schema !== "object") return { type: "object", properties: {} };
+  const out = { ...schema };
+  if (out.type !== "object") out.type = "object";
+  if (!out.properties || typeof out.properties !== "object") out.properties = {};
+  walkAddItems(out);
+  return out;
+}
+
+function walkAddItems(node) {
+  if (!node || typeof node !== "object") return;
+  if (node.type === "array" && !node.items && !node.prefixItems) {
+    node.items = {};
+  }
+  for (const val of Object.values(node)) {
+    if (Array.isArray(val)) val.forEach(walkAddItems);
+    else if (val && typeof val === "object") walkAddItems(val);
+  }
+}
+
+function sanitizeToolsForCodex(tools) {
+  if (!Array.isArray(tools)) return tools;
+  return tools.map(t => {
+    if (t?.function) return { ...t, function: { ...t.function, parameters: ensureObjectSchema(t.function.parameters) } };
+    if (t?.type === "function") return { ...t, parameters: ensureObjectSchema(t.parameters) };
+    return t;
+  });
+}
+
 /**
  * Codex Executor - handles OpenAI Codex API (Responses API format)
  * Automatically injects default instructions if missing
@@ -149,6 +182,10 @@ export class CodexExecutor extends BaseExecutor {
 
     // Ensure store is false (Codex requirement)
     body.store = false;
+
+    // Sanitize tool schemas — Codex strict mode rejects parameterless tools
+    // and arrays without `items` (common MCP server output).
+    if (body.tools) body.tools = sanitizeToolsForCodex(body.tools);
 
     // Extract thinking level from model name suffix
     // e.g., gpt-5.3-codex-high → high, gpt-5.3-codex → medium (default)
