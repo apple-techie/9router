@@ -123,12 +123,23 @@ function hoistOpenAIChatSystem(body) {
   return { ...body, messages: [hoisted, ...others] };
 }
 
-// OpenAI Responses hoisting: prepend an `input` item with the instructions.
+// OpenAI Responses surface fixes: hoist `instructions`, rename `max_tokens`
+// → `max_output_tokens`. The shared openai→openai-responses translator at
+// open-sse/translator/request/openai-responses.js leaves `max_tokens`
+// unchanged, but Factory's /api/llm/o/v1/responses gateway rejects it as an
+// unknown parameter (codex's OpenAI backend silently ignores it).
 function hoistOpenAIResponses(body) {
-  const instructions = typeof body.instructions === "string" ? body.instructions.trim() : "";
-  if (!instructions) return body;
+  let result = body;
 
-  let input = body.input;
+  if (result.max_tokens !== undefined && result.max_output_tokens === undefined) {
+    const { max_tokens, ...rest } = result;
+    result = { ...rest, max_output_tokens: max_tokens };
+  }
+
+  const instructions = typeof result.instructions === "string" ? result.instructions.trim() : "";
+  if (!instructions) return result;
+
+  let input = result.input;
   if (typeof input === "string") {
     input = [{ type: "message", role: "user", content: [{ type: "input_text", text: input }] }];
   } else if (!Array.isArray(input)) {
@@ -143,7 +154,7 @@ function hoistOpenAIResponses(body) {
     content: [{ type: "input_text", text: systemPromptPrefix(instructions) }],
   });
 
-  const { instructions: _omit, ...rest } = body;
+  const { instructions: _omit, ...rest } = result;
   return { ...rest, input };
 }
 
