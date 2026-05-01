@@ -161,6 +161,15 @@ export const PROVIDER_MODELS = {
     { id: "minimax-m2.7", name: "MiniMax M2.7", targetFormat: "claude" },
     { id: "minimax-m2.5", name: "MiniMax M2.5", targetFormat: "claude" },
   ],
+  "factory-droid": [  // Factory Droid subscription (API key, Anthropic-format gateway)
+    { id: "claude-opus-4-7", name: "Claude Opus 4.7" },
+    { id: "claude-opus-4-6", name: "Claude Opus 4.6" },
+    { id: "claude-opus-4-6-fast", name: "Claude Opus 4.6 Fast" },
+    { id: "claude-sonnet-4-6", name: "Claude Sonnet 4.6" },
+    { id: "claude-opus-4-5-20251101", name: "Claude Opus 4.5" },
+    { id: "claude-sonnet-4-5-20250929", name: "Claude Sonnet 4.5" },
+    { id: "claude-haiku-4-5-20251001", name: "Claude Haiku 4.5" },
+  ],
   oc: [  // OpenCode
     // { id: "nemotron-3-super-free", name: "Nemotron 3 Super" },
     // { id: "qwen3.6-plus-free", name: "Qwen 3.6 Plus" },

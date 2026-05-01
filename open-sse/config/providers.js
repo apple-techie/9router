@@ -247,6 +247,15 @@ export const PROVIDERS = {
     format: "claude",
     headers: { ...CLAUDE_API_HEADERS }
   },
+  "factory-droid": {
+    baseUrl: "https://app.factory.ai/api/llm/a/v1/messages",
+    format: "claude",
+    headers: {
+      "anthropic-version": "2023-06-01",
+      "User-Agent": "factory-cli/0.80.0",
+      "x-factory-client-version": "0.80.0"
+    }
+  },
   deepseek: {
     baseUrl: "https://api.deepseek.com/chat/completions",
     format: "openai"

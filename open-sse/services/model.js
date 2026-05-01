@@ -14,6 +14,8 @@ const ALIAS_TO_PROVIDER_ID = {
   cl: "cline",
   oc: "opencode",
   ocg: "opencode-go",
+  fd: "factory-droid",
+  "factory-droid": "factory-droid",
   // TTS providers
   el: "elevenlabs",
   // API Key providers

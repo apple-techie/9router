@@ -411,6 +411,26 @@ export async function POST(request) {
           break;
         }
 
+        case "factory-droid": {
+          const res = await fetch("https://app.factory.ai/api/llm/a/v1/messages", {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+              "Authorization": `Bearer ${apiKey}`,
+              "anthropic-version": "2023-06-01",
+              "User-Agent": "factory-cli/0.80.0",
+              "x-factory-client-version": "0.80.0",
+            },
+            body: JSON.stringify({
+              model: getDefaultModel("factory-droid"),
+              messages: [{ role: "user", content: "ping" }],
+              max_tokens: 1,
+            }),
+          });
+          isValid = res.status !== 401 && res.status !== 403;
+          break;
+        }
+
         case "deepgram": {
           const res = await fetch("https://api.deepgram.com/v1/projects", {
             headers: { "Authorization": `Token ${apiKey}` },
