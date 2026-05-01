@@ -122,6 +122,76 @@ export function translateNonStreamingResponse(responseBody, targetFormat, source
     return ollamaBodyToOpenAI(responseBody);
   }
 
+  // OpenAI Responses → OpenAI Chat (non-streaming).
+  // Factory's /api/llm/o/v1/responses returns this shape; without a translator
+  // here the chat-completions client gets an empty `content` field.
+  if (targetFormat === FORMATS.OPENAI_RESPONSES) {
+    if (!Array.isArray(responseBody?.output)) return responseBody;
+
+    let textContent = "";
+    let reasoningContent = "";
+    const toolCalls = [];
+
+    for (const item of responseBody.output) {
+      if (!item || typeof item !== "object") continue;
+      if (item.type === "message" && Array.isArray(item.content)) {
+        for (const part of item.content) {
+          if (part?.type === "output_text" || part?.type === "text") {
+            textContent += part.text || "";
+          } else if (part?.type === "summary_text") {
+            reasoningContent += part.text || "";
+          }
+        }
+      } else if (item.type === "reasoning" && Array.isArray(item.summary)) {
+        for (const part of item.summary) {
+          reasoningContent += part?.text || "";
+        }
+      } else if (item.type === "function_call" || item.type === "custom_tool_call") {
+        const args = typeof item.arguments === "string" ? item.arguments : JSON.stringify(item.arguments ?? {});
+        toolCalls.push({
+          id: item.call_id || `call_${Date.now()}_${toolCalls.length}`,
+          type: "function",
+          function: { name: item.name || "", arguments: args }
+        });
+      }
+    }
+
+    const message = { role: "assistant" };
+    if (textContent) message.content = textContent;
+    if (reasoningContent) message.reasoning_content = reasoningContent;
+    if (toolCalls.length > 0) message.tool_calls = toolCalls;
+    if (!message.content && !message.tool_calls) message.content = "";
+
+    let finishReason = "stop";
+    if (toolCalls.length > 0) finishReason = "tool_calls";
+    else if (responseBody.status === "incomplete") {
+      const r = responseBody.incomplete_details?.reason;
+      finishReason = r === "max_output_tokens" ? "length" : (r || "stop");
+    }
+
+    const result = {
+      id: `chatcmpl-${responseBody.id || Date.now()}`,
+      object: "chat.completion",
+      created: responseBody.created_at || Math.floor(Date.now() / 1000),
+      model: responseBody.model || "openai-responses",
+      choices: [{ index: 0, message, finish_reason: finishReason }]
+    };
+
+    if (responseBody.usage) {
+      const u = responseBody.usage;
+      result.usage = {
+        prompt_tokens: u.input_tokens || u.prompt_tokens || 0,
+        completion_tokens: u.output_tokens || u.completion_tokens || 0,
+        total_tokens: u.total_tokens || ((u.input_tokens || 0) + (u.output_tokens || 0))
+      };
+      const reasoningTokens = u.output_tokens_details?.reasoning_tokens;
+      if (reasoningTokens) {
+        result.usage.completion_tokens_details = { reasoning_tokens: reasoningTokens };
+      }
+    }
+    return result;
+  }
+
   return responseBody;
 }
 
