@@ -24,6 +24,7 @@ const MODEL_CATALOG = {
   // message; Factory rejects native `system` blocks with 403.
   "claude-opus-4-7":               { family: "anthropic", api_provider: "anthropic" },
   "claude-opus-4-6":               { family: "anthropic", api_provider: "anthropic" },
+  "claude-opus-4-6-fast":          { family: "anthropic", api_provider: "anthropic" },
   "claude-sonnet-4-6":             { family: "anthropic", api_provider: "anthropic" },
   "claude-opus-4-5-20251101":      { family: "anthropic", api_provider: "anthropic" },
   "claude-sonnet-4-5-20250929":    { family: "anthropic", api_provider: "anthropic" },
@@ -38,6 +39,7 @@ const MODEL_CATALOG = {
   "gpt-5.4-fast":                  { family: "openai-responses", api_provider: "openai" },
   "gpt-5.4-mini":                  { family: "openai-responses", api_provider: "openai" },
   "gpt-5.3-codex":                 { family: "openai-responses", api_provider: "openai" },
+  "gpt-5.3-codex-fast":            { family: "openai-responses", api_provider: "openai" },
   "gpt-5.2":                       { family: "openai-responses", api_provider: "openai" },
   "gpt-5.2-codex":                 { family: "openai-responses", api_provider: "openai" },
   "gpt-5.1-codex-max":             { family: "openai-responses", api_provider: "openai" },

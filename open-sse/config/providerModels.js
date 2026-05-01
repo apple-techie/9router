@@ -165,6 +165,7 @@ export const PROVIDER_MODELS = {
     // Anthropic surface (/api/llm/a/v1/messages)
     { id: "claude-opus-4-7", name: "Claude Opus 4.7", targetFormat: "claude" },
     { id: "claude-opus-4-6", name: "Claude Opus 4.6", targetFormat: "claude" },
+    { id: "claude-opus-4-6-fast", name: "Claude Opus 4.6 Fast", targetFormat: "claude" },
     { id: "claude-sonnet-4-6", name: "Claude Sonnet 4.6", targetFormat: "claude" },
     { id: "claude-opus-4-5-20251101", name: "Claude Opus 4.5", targetFormat: "claude" },
     { id: "claude-sonnet-4-5-20250929", name: "Claude Sonnet 4.5", targetFormat: "claude" },
@@ -178,6 +179,7 @@ export const PROVIDER_MODELS = {
     { id: "gpt-5.4-fast", name: "GPT 5.4 Fast", targetFormat: "openai-responses" },
     { id: "gpt-5.4-mini", name: "GPT 5.4 Mini", targetFormat: "openai-responses" },
     { id: "gpt-5.3-codex", name: "GPT 5.3 Codex", targetFormat: "openai-responses" },
+    { id: "gpt-5.3-codex-fast", name: "GPT 5.3 Codex Fast", targetFormat: "openai-responses" },
     { id: "gpt-5.2", name: "GPT 5.2", targetFormat: "openai-responses" },
     { id: "gpt-5.2-codex", name: "GPT 5.2 Codex", targetFormat: "openai-responses" },
     { id: "gpt-5.1-codex-max", name: "GPT 5.1 Codex Max", targetFormat: "openai-responses" },
