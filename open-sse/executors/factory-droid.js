@@ -24,20 +24,32 @@ const MODEL_CATALOG = {
   // message; Factory rejects native `system` blocks with 403.
   "claude-opus-4-7":               { family: "anthropic", api_provider: "anthropic" },
   "claude-opus-4-6":               { family: "anthropic", api_provider: "anthropic" },
-  "claude-opus-4-6-fast":          { family: "anthropic", api_provider: "anthropic" },
   "claude-sonnet-4-6":             { family: "anthropic", api_provider: "anthropic" },
   "claude-opus-4-5-20251101":      { family: "anthropic", api_provider: "anthropic" },
-  // MiniMax routes through the Anthropic surface (Fireworks-hosted).
+  "claude-sonnet-4-5-20250929":    { family: "anthropic", api_provider: "anthropic" },
+  "claude-haiku-4-5-20251001":     { family: "anthropic", api_provider: "anthropic" },
+  // MiniMax M2.7 routes through the Anthropic surface (Fireworks-hosted).
   "minimax-m2.7":                  { family: "anthropic", api_provider: "fireworks" },
   // GPT-5.x — OpenAI Responses surface.
   "gpt-5.5":                       { family: "openai-responses", api_provider: "openai" },
+  "gpt-5.5-pro":                   { family: "openai-responses", api_provider: "openai" },
   "gpt-5.5-fast":                  { family: "openai-responses", api_provider: "openai" },
   "gpt-5.4":                       { family: "openai-responses", api_provider: "openai" },
   "gpt-5.4-fast":                  { family: "openai-responses", api_provider: "openai" },
   "gpt-5.4-mini":                  { family: "openai-responses", api_provider: "openai" },
-  // Kimi & GLM — OpenAI Chat Completions surface (Fireworks-hosted).
+  "gpt-5.3-codex":                 { family: "openai-responses", api_provider: "openai" },
+  "gpt-5.2":                       { family: "openai-responses", api_provider: "openai" },
+  "gpt-5.2-codex":                 { family: "openai-responses", api_provider: "openai" },
+  "gpt-5.1-codex-max":             { family: "openai-responses", api_provider: "openai" },
+  "gpt-5.1-codex":                 { family: "openai-responses", api_provider: "openai" },
+  "gpt-5.1":                       { family: "openai-responses", api_provider: "openai" },
+  // Kimi, GLM & MiniMax M2.5 — OpenAI Chat Completions surface (Fireworks-hosted).
   "kimi-k2.5":                     { family: "openai-chat", api_provider: "fireworks" },
+  "kimi-k2.6":                     { family: "openai-chat", api_provider: "fireworks" },
   "glm-5.1":                       { family: "openai-chat", api_provider: "fireworks" },
+  "glm-5":                         { family: "openai-chat", api_provider: "fireworks" },
+  "glm-4.7":                       { family: "openai-chat", api_provider: "fireworks" },
+  "minimax-m2.5":                  { family: "openai-chat", api_provider: "fireworks" },
   // Gemini 3.x — Google native surface.
   "gemini-3.1-pro-preview":        { family: "gemini", api_provider: "google" },
   "gemini-3-flash-preview":        { family: "gemini", api_provider: "google" },
