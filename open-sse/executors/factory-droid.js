@@ -1,0 +1,224 @@
+import crypto from "crypto";
+import { BaseExecutor } from "./base.js";
+import { PROVIDERS } from "../config/providers.js";
+import { injectReasoningContent } from "../utils/reasoningContentInjector.js";
+
+// Factory CLI version — kept in sync with the latest known build so the
+// upstream gateway accepts our requests.
+const FACTORY_CLI_VERSION = "0.104.0";
+const FACTORY_USER_AGENT = `factory-cli/${FACTORY_CLI_VERSION}`;
+const FACTORY_BASE_URL = "https://api.factory.ai";
+
+const PATH = {
+  anthropic: "/api/llm/a/v1/messages",
+  "openai-responses": "/api/llm/o/v1/responses",
+  "openai-chat": "/api/llm/o/v1/chat/completions",
+  gemini: "/api/llm/g/v1/generate",
+};
+
+// Model → wire family + api_provider header value.
+// Catalog mirrors the Factory model registry reverse-engineered in
+// kainotomic/omnigate's omnigate-provider-factory crate.
+const MODEL_CATALOG = {
+  // Claude (Anthropic) — system prompt MUST be hoisted into the first user
+  // message; Factory rejects native `system` blocks with 403.
+  "claude-opus-4-7":               { family: "anthropic", api_provider: "anthropic" },
+  "claude-opus-4-6":               { family: "anthropic", api_provider: "anthropic" },
+  "claude-opus-4-6-fast":          { family: "anthropic", api_provider: "anthropic" },
+  "claude-sonnet-4-6":             { family: "anthropic", api_provider: "anthropic" },
+  "claude-opus-4-5-20251101":      { family: "anthropic", api_provider: "anthropic" },
+  // MiniMax routes through the Anthropic surface (Fireworks-hosted).
+  "minimax-m2.7":                  { family: "anthropic", api_provider: "fireworks" },
+  // GPT-5.x — OpenAI Responses surface.
+  "gpt-5.5":                       { family: "openai-responses", api_provider: "openai" },
+  "gpt-5.5-fast":                  { family: "openai-responses", api_provider: "openai" },
+  "gpt-5.4":                       { family: "openai-responses", api_provider: "openai" },
+  "gpt-5.4-fast":                  { family: "openai-responses", api_provider: "openai" },
+  "gpt-5.4-mini":                  { family: "openai-responses", api_provider: "openai" },
+  // Kimi & GLM — OpenAI Chat Completions surface (Fireworks-hosted).
+  "kimi-k2.5":                     { family: "openai-chat", api_provider: "fireworks" },
+  "glm-5.1":                       { family: "openai-chat", api_provider: "fireworks" },
+  // Gemini 3.x — Google native surface.
+  "gemini-3.1-pro-preview":        { family: "gemini", api_provider: "google" },
+  "gemini-3-flash-preview":        { family: "gemini", api_provider: "google" },
+};
+
+function lookupModel(model) {
+  return MODEL_CATALOG[model] || MODEL_CATALOG["claude-opus-4-7"];
+}
+
+// Factory uses "System instructions:\n\n..." as a hoisting prefix so the
+// upstream model treats it as the system prompt.
+function systemPromptPrefix(text) {
+  return `System instructions:\n\n${(text || "").trim()}`;
+}
+
+// Anthropic-format hoisting: pull `system` blocks into a leading user message.
+function hoistAnthropicSystem(body) {
+  const system = body.system;
+  if (system === undefined || system === null) return body;
+
+  let blocks = [];
+  if (typeof system === "string") {
+    const trimmed = system.trim();
+    if (trimmed) blocks.push({ type: "text", text: trimmed });
+  } else if (Array.isArray(system)) {
+    for (const block of system) {
+      if (typeof block === "string") {
+        const trimmed = block.trim();
+        if (trimmed) blocks.push({ type: "text", text: trimmed });
+      } else if (block && typeof block === "object") {
+        const text = (block.text ?? "").toString().trim();
+        if (!text) continue;
+        const next = { ...block, type: "text", text };
+        blocks.push(next);
+      }
+    }
+  } else if (typeof system === "object" && system.text) {
+    const trimmed = system.text.toString().trim();
+    if (trimmed) blocks.push({ ...system, type: "text", text: trimmed });
+  }
+
+  if (blocks.length === 0) {
+    const { system: _, ...rest } = body;
+    return rest;
+  }
+
+  // Prefix the first block with "System instructions:" so the model still
+  // understands the role of the hoisted content.
+  const first = blocks[0];
+  blocks[0] = { ...first, text: systemPromptPrefix(first.text) };
+
+  const messages = Array.isArray(body.messages) ? [...body.messages] : [];
+  messages.unshift({ role: "user", content: blocks });
+
+  const { system: _omitted, ...rest } = body;
+  return { ...rest, messages };
+}
+
+// OpenAI Chat hoisting: convert leading system/developer messages into a
+// single leading user message with the prefix.
+function hoistOpenAIChatSystem(body) {
+  const messages = Array.isArray(body.messages) ? body.messages : [];
+  const systemTexts = [];
+  const others = [];
+
+  for (const msg of messages) {
+    if (!msg || typeof msg !== "object") continue;
+    if (msg.role === "system" || msg.role === "developer") {
+      const text = typeof msg.content === "string"
+        ? msg.content
+        : Array.isArray(msg.content)
+          ? msg.content.map(p => p?.text || "").join("")
+          : "";
+      const trimmed = text.trim();
+      if (trimmed) systemTexts.push(trimmed);
+      continue;
+    }
+    others.push(msg);
+  }
+
+  if (systemTexts.length === 0) return body;
+  const hoisted = { role: "user", content: systemPromptPrefix(systemTexts.join("\n\n")) };
+  return { ...body, messages: [hoisted, ...others] };
+}
+
+// OpenAI Responses hoisting: prepend an `input` item with the instructions.
+function hoistOpenAIResponses(body) {
+  const instructions = typeof body.instructions === "string" ? body.instructions.trim() : "";
+  if (!instructions) return body;
+
+  let input = body.input;
+  if (typeof input === "string") {
+    input = [{ type: "message", role: "user", content: [{ type: "input_text", text: input }] }];
+  } else if (!Array.isArray(input)) {
+    input = [];
+  } else {
+    input = [...input];
+  }
+
+  input.unshift({
+    type: "message",
+    role: "user",
+    content: [{ type: "input_text", text: systemPromptPrefix(instructions) }],
+  });
+
+  const { instructions: _omit, ...rest } = body;
+  return { ...rest, input };
+}
+
+// Gemini hoisting: drop `systemInstruction`, prepend its text as a user content.
+function hoistGeminiSystemInstruction(body) {
+  const sys = body.systemInstruction;
+  if (!sys) return body;
+
+  let text = "";
+  if (typeof sys === "string") {
+    text = sys;
+  } else if (sys.text) {
+    text = sys.text;
+  } else if (Array.isArray(sys.parts)) {
+    text = sys.parts.map(p => p?.text || "").filter(Boolean).join("\n\n");
+  }
+  text = (text || "").trim();
+  if (!text) {
+    const { systemInstruction: _, ...rest } = body;
+    return rest;
+  }
+
+  const contents = Array.isArray(body.contents) ? [...body.contents] : [];
+  contents.unshift({ role: "user", parts: [{ text: systemPromptPrefix(text) }] });
+  const { systemInstruction: _omit, ...rest } = body;
+  return { ...rest, contents };
+}
+
+export class FactoryDroidExecutor extends BaseExecutor {
+  constructor() {
+    super("factory-droid", PROVIDERS["factory-droid"]);
+  }
+
+  buildUrl(model) {
+    this._lastModel = model;
+    const entry = lookupModel(model);
+    return `${FACTORY_BASE_URL}${PATH[entry.family]}`;
+  }
+
+  buildHeaders(credentials, stream = true) {
+    const model = this._lastModel;
+    const entry = lookupModel(model);
+    const apiKey = credentials?.apiKey || credentials?.accessToken;
+    const sessionId = crypto.randomUUID();
+    const assistantMessageId = `msg_${crypto.randomUUID()}`;
+
+    const headers = {
+      "Content-Type": "application/json",
+      "Authorization": `Bearer ${apiKey}`,
+      "User-Agent": FACTORY_USER_AGENT,
+      "x-client-version": FACTORY_CLI_VERSION,
+      "x-api-provider": entry.api_provider,
+      "x-session-id": sessionId,
+      "x-assistant-message-id": assistantMessageId,
+    };
+
+    if (entry.family === "anthropic") {
+      headers["anthropic-version"] = "2023-06-01";
+    }
+
+    if (stream) headers["Accept"] = "text/event-stream";
+    return headers;
+  }
+
+  transformRequest(model, body) {
+    const enriched = injectReasoningContent({ provider: this.provider, model, body });
+    const entry = lookupModel(model);
+    switch (entry.family) {
+      case "anthropic":        return hoistAnthropicSystem(enriched);
+      case "openai-responses": return hoistOpenAIResponses(enriched);
+      case "openai-chat":      return hoistOpenAIChatSystem(enriched);
+      case "gemini":           return hoistGeminiSystemInstruction(enriched);
+      default:                 return enriched;
+    }
+  }
+}
+
+export default FactoryDroidExecutor;

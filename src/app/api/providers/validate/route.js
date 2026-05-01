@@ -412,14 +412,18 @@ export async function POST(request) {
         }
 
         case "factory-droid": {
-          const res = await fetch("https://app.factory.ai/api/llm/a/v1/messages", {
+          const sessionId = crypto.randomUUID();
+          const res = await fetch("https://api.factory.ai/api/llm/a/v1/messages", {
             method: "POST",
             headers: {
               "Content-Type": "application/json",
               "Authorization": `Bearer ${apiKey}`,
               "anthropic-version": "2023-06-01",
-              "User-Agent": "factory-cli/0.80.0",
-              "x-factory-client-version": "0.80.0",
+              "User-Agent": "factory-cli/0.104.0",
+              "x-client-version": "0.104.0",
+              "x-api-provider": "anthropic",
+              "x-session-id": sessionId,
+              "x-assistant-message-id": `msg_${crypto.randomUUID()}`,
             },
             body: JSON.stringify({
               model: getDefaultModel("factory-droid"),

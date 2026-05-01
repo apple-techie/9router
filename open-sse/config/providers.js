@@ -248,13 +248,12 @@ export const PROVIDERS = {
     headers: { ...CLAUDE_API_HEADERS }
   },
   "factory-droid": {
-    baseUrl: "https://app.factory.ai/api/llm/a/v1/messages",
-    format: "claude",
-    headers: {
-      "anthropic-version": "2023-06-01",
-      "User-Agent": "factory-cli/0.80.0",
-      "x-factory-client-version": "0.80.0"
-    }
+    // Per-model URL/headers/format are picked by FactoryDroidExecutor.
+    // Default format is `claude` (Anthropic surface) since most Factory models
+    // are Claude variants. GPT/Gemini/Kimi/GLM models override via
+    // `targetFormat` in PROVIDER_MODELS so the translator hits the right wire.
+    baseUrl: "https://api.factory.ai",
+    format: "claude"
   },
   deepseek: {
     baseUrl: "https://api.deepseek.com/chat/completions",

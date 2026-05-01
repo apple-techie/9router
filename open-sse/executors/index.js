@@ -11,6 +11,7 @@ import { VertexExecutor } from "./vertex.js";
 import { QwenExecutor } from "./qwen.js";
 import { OpenCodeExecutor } from "./opencode.js";
 import { OpenCodeGoExecutor } from "./opencode-go.js";
+import { FactoryDroidExecutor } from "./factory-droid.js";
 import { GrokWebExecutor } from "./grok-web.js";
 import { PerplexityWebExecutor } from "./perplexity-web.js";
 import { DefaultExecutor } from "./default.js";
@@ -31,6 +32,7 @@ const executors = {
   qwen: new QwenExecutor(),
   opencode: new OpenCodeExecutor(),
   "opencode-go": new OpenCodeGoExecutor(),
+  "factory-droid": new FactoryDroidExecutor(),
   "grok-web": new GrokWebExecutor(),
   "perplexity-web": new PerplexityWebExecutor(),
 };
@@ -62,5 +64,6 @@ export { DefaultExecutor } from "./default.js";
 export { QwenExecutor } from "./qwen.js";
 export { OpenCodeExecutor } from "./opencode.js";
 export { OpenCodeGoExecutor } from "./opencode-go.js";
+export { FactoryDroidExecutor } from "./factory-droid.js";
 export { GrokWebExecutor } from "./grok-web.js";
 export { PerplexityWebExecutor } from "./perplexity-web.js";
