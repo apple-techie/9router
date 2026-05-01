@@ -33,7 +33,6 @@ const MODEL_CATALOG = {
   "minimax-m2.7":                  { family: "anthropic", api_provider: "fireworks" },
   // GPT-5.x — OpenAI Responses surface.
   "gpt-5.5":                       { family: "openai-responses", api_provider: "openai" },
-  "gpt-5.5-pro":                   { family: "openai-responses", api_provider: "openai" },
   "gpt-5.5-fast":                  { family: "openai-responses", api_provider: "openai" },
   "gpt-5.4":                       { family: "openai-responses", api_provider: "openai" },
   "gpt-5.4-fast":                  { family: "openai-responses", api_provider: "openai" },

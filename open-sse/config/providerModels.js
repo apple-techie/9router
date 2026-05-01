@@ -173,7 +173,6 @@ export const PROVIDER_MODELS = {
     { id: "minimax-m2.7", name: "MiniMax M2.7", targetFormat: "claude" },
     // OpenAI Responses surface (/api/llm/o/v1/responses)
     { id: "gpt-5.5", name: "GPT 5.5", targetFormat: "openai-responses" },
-    { id: "gpt-5.5-pro", name: "GPT 5.5 Pro", targetFormat: "openai-responses" },
     { id: "gpt-5.5-fast", name: "GPT 5.5 Fast", targetFormat: "openai-responses" },
     { id: "gpt-5.4", name: "GPT 5.4", targetFormat: "openai-responses" },
     { id: "gpt-5.4-fast", name: "GPT 5.4 Fast", targetFormat: "openai-responses" },
