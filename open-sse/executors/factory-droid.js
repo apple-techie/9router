@@ -216,18 +216,31 @@ export class FactoryDroidExecutor extends BaseExecutor {
   }
 
   async execute(args) {
-    const result = await super.execute(args);
+    let result;
+    try {
+      result = await super.execute(args);
+    } catch (err) {
+      // BaseExecutor throws when all upstream URLs fail. If the underlying
+      // failure is a Factory rate-limit (the executor only sees the thrown
+      // error, not the response body), re-raise as-is — there's no body to
+      // parse a Retry-After from in this path.
+      console.log(`[factory-droid] super.execute threw: ${err.message}`);
+      throw err;
+    }
     const r = result?.response;
+    console.log(`[factory-droid] upstream status=${r?.status}`);
     if (!r || r.status !== 403) return result;
 
     const cloned = r.clone();
     const text = await cloned.text();
     const retryAfterSec = parseFactoryResetAfter(text);
+    console.log(`[factory-droid] 403 body len=${text.length} retryAfter=${retryAfterSec} body=${text.slice(0, 200)}`);
     if (!retryAfterSec) return result;
 
     const headers = new Headers(r.headers);
     headers.set("Retry-After", String(retryAfterSec));
     headers.set("X-Factory-Original-Status", "403");
+    console.log(`[factory-droid] rewriting 403 → 429 with Retry-After=${retryAfterSec}`);
     return {
       ...result,
       response: new Response(text, { status: 429, statusText: "Too Many Requests", headers }),
