@@ -180,6 +180,36 @@ function hoistOpenAIResponses(body) {
   return { ...rest, input };
 }
 
+// Strip `id` from Gemini function_call / function_response parts. Our shared
+// openai-to-gemini translator emits `id` because antigravity / gemini-cli
+// (Google's internal cloudcode-pa surface) accepts it, but Factory's
+// /api/llm/g/v1/generate proxies the PUBLIC Gemini API which rejects with
+// "Unknown name 'id' at contents[N].parts[M].function_call". Strip on
+// continuation tool conversations, keep everything else.
+function stripGeminiFunctionIds(body) {
+  if (!Array.isArray(body?.contents)) return body;
+  let mutated = false;
+  const contents = body.contents.map(c => {
+    if (!Array.isArray(c?.parts)) return c;
+    let partsMutated = false;
+    const parts = c.parts.map(p => {
+      if (p?.functionCall && "id" in p.functionCall) {
+        const { id: _id, ...rest } = p.functionCall;
+        partsMutated = true; mutated = true;
+        return { ...p, functionCall: rest };
+      }
+      if (p?.functionResponse && "id" in p.functionResponse) {
+        const { id: _id, ...rest } = p.functionResponse;
+        partsMutated = true; mutated = true;
+        return { ...p, functionResponse: rest };
+      }
+      return p;
+    });
+    return partsMutated ? { ...c, parts } : c;
+  });
+  return mutated ? { ...body, contents } : body;
+}
+
 // Gemini hoisting: drop `systemInstruction`, prepend its text as a user content.
 function hoistGeminiSystemInstruction(body) {
   const sys = body.systemInstruction;
@@ -317,7 +347,7 @@ export class FactoryDroidExecutor extends BaseExecutor {
       case "anthropic":        return hoistAnthropicSystem(enriched);
       case "openai-responses": return hoistOpenAIResponses(enriched);
       case "openai-chat":      return hoistOpenAIChatSystem(enriched);
-      case "gemini":           return hoistGeminiSystemInstruction(enriched);
+      case "gemini":           return hoistGeminiSystemInstruction(stripGeminiFunctionIds(enriched));
       default:                 return enriched;
     }
   }
