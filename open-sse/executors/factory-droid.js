@@ -216,31 +216,45 @@ export class FactoryDroidExecutor extends BaseExecutor {
   }
 
   async execute(args) {
-    let result;
-    try {
-      result = await super.execute(args);
-    } catch (err) {
-      // BaseExecutor throws when all upstream URLs fail. If the underlying
-      // failure is a Factory rate-limit (the executor only sees the thrown
-      // error, not the response body), re-raise as-is — there's no body to
-      // parse a Retry-After from in this path.
-      console.log(`[factory-droid] super.execute threw: ${err.message}`);
-      throw err;
-    }
+    const result = await super.execute(args);
     const r = result?.response;
-    console.log(`[factory-droid] upstream status=${r?.status}`);
     if (!r || r.status !== 403) return result;
 
+    // Factory's 403 body is a generic "Forbidden" payload — the rate-limit
+    // duration is conveyed via Retry-After / X-RateLimit-Reset-After
+    // headers, NOT via "reset after Xs" text in the body.
     const cloned = r.clone();
     const text = await cloned.text();
-    const retryAfterSec = parseFactoryResetAfter(text);
-    console.log(`[factory-droid] 403 body len=${text.length} retryAfter=${retryAfterSec} body=${text.slice(0, 200)}`);
-    if (!retryAfterSec) return result;
+    let retryAfterSec =
+      parseFactoryResetAfter(text)
+      || parseInt(r.headers.get("retry-after") || "0", 10)
+      || parseInt(r.headers.get("x-ratelimit-reset-after") || "0", 10);
+
+    // Last resort: derive from x-ratelimit-reset (epoch seconds).
+    if (!retryAfterSec) {
+      const resetEpoch = parseInt(r.headers.get("x-ratelimit-reset") || "0", 10);
+      if (resetEpoch > 0) {
+        retryAfterSec = Math.max(1, Math.ceil((resetEpoch * 1000 - Date.now()) / 1000));
+      }
+    }
+
+    // Distinguish a real auth failure (no rate-limit signal anywhere) from
+    // a transient throttle. Real auth failures surface as 403; throttles
+    // become 429 with Retry-After so OpenClaw treats them as rate_limit
+    // (transient → fall back) instead of auth (terminal → surface error).
+    if (!retryAfterSec) {
+      // Default to 30s when 9router has independent reason to believe this
+      // is a Factory throttle (e.g. body lacks "Forbidden" or contains the
+      // Factory request-id pattern). Plain 403 with no signal → preserve.
+      const looksLikeFactoryThrottle = /requestId":"sfo\d/i.test(text);
+      if (!looksLikeFactoryThrottle) return result;
+      retryAfterSec = 30;
+    }
 
     const headers = new Headers(r.headers);
     headers.set("Retry-After", String(retryAfterSec));
     headers.set("X-Factory-Original-Status", "403");
-    console.log(`[factory-droid] rewriting 403 → 429 with Retry-After=${retryAfterSec}`);
+    console.log(`[factory-droid] rewriting 403 → 429 with Retry-After=${retryAfterSec}s`);
     return {
       ...result,
       response: new Response(text, { status: 429, statusText: "Too Many Requests", headers }),
