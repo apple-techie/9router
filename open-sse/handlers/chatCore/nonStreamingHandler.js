@@ -5,7 +5,7 @@ import { addBufferToUsage, filterUsageForFormat } from "../../utils/usageTrackin
 import { createErrorResult } from "../../utils/error.js";
 import { HTTP_STATUS } from "../../config/runtimeConfig.js";
 import { parseSSEToOpenAIResponse } from "./sseToJsonHandler.js";
-import { convertResponsesStreamToJson } from "../../transformer/streamToJsonConverter.js";
+import { convertResponsesStreamToJson, convertGeminiStreamToOpenAIJson } from "../../transformer/streamToJsonConverter.js";
 import { buildRequestDetail, extractRequestConfig, extractUsageFromResponse, saveUsageStats } from "./requestDetail.js";
 import { appendRequestLog, saveRequestDetail } from "@/lib/usageDb.js";
 import { decloakToolNames } from "../../utils/claudeCloaking.js";
@@ -204,6 +204,10 @@ export async function handleNonStreamingResponse({ providerResponse, provider, m
   const contentType = providerResponse.headers.get("content-type") || "";
   let responseBody;
 
+  // When set, the SSE→JSON converter already produced OpenAI chat.completion
+  // shape, so we skip the GEMINI→client translation that runs downstream.
+  let alreadyOpenAIShape = false;
+
   if (contentType.includes("text/event-stream")) {
     // Responses-API SSE (codex, factory-droid GPT models, etc.) uses
     // event:response.output_item.done frames, NOT chat-completions delta
@@ -212,6 +216,20 @@ export async function handleNonStreamingResponse({ providerResponse, provider, m
     // API JSON object that translateNonStreamingResponse below understands.
     if (targetFormat === FORMATS.OPENAI_RESPONSES || sourceFormat === FORMATS.OPENAI_RESPONSES) {
       responseBody = await convertResponsesStreamToJson(providerResponse.body);
+    } else if (
+      (targetFormat === FORMATS.GEMINI || targetFormat === FORMATS.ANTIGRAVITY || targetFormat === FORMATS.GEMINI_CLI)
+      && sourceFormat !== FORMATS.GEMINI && sourceFormat !== FORMATS.ANTIGRAVITY && sourceFormat !== FORMATS.GEMINI_CLI
+    ) {
+      // Factory's /api/llm/g/v1/generate (and Vertex) ALWAYS streams Gemini-native
+      // chunks, even when stream=false. The early chunks carry `text`; the
+      // terminal chunk has empty text + thoughtSignature + finishReason.
+      // parseSSEToOpenAIResponse only knows OpenAI-shape deltas → empty content.
+      // Aggregate the Gemini chunks directly into a chat.completion JSON, then
+      // skip the downstream translation since we already produced OpenAI shape.
+      // Only kicks in when the CLIENT wants OpenAI/Anthropic shape — Gemini
+      // clients still get the raw Gemini SSE handled below.
+      responseBody = await convertGeminiStreamToOpenAIJson(providerResponse.body, model);
+      alreadyOpenAIShape = true;
     } else {
       const sseText = await providerResponse.text();
       const parsed = parseSSEToOpenAIResponse(sseText, model);
@@ -241,7 +259,7 @@ export async function handleNonStreamingResponse({ providerResponse, provider, m
   appendLog({ tokens: usage, status: "200 OK" });
   saveUsageStats({ provider, model, tokens: usage, connectionId, apiKey, endpoint: clientRawRequest?.endpoint });
 
-  const translatedResponse = needsTranslation(targetFormat, sourceFormat)
+  const translatedResponse = (!alreadyOpenAIShape && needsTranslation(targetFormat, sourceFormat))
     ? translateNonStreamingResponse(responseBody, targetFormat, sourceFormat)
     : responseBody;
 
