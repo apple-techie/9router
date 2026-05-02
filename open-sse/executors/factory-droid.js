@@ -249,73 +249,16 @@ function hoistGeminiSystemInstruction(body) {
 // for transient rate limits. LiteLLM treats 403 as a permanent failure
 // (no retry, no fallback, fires outage alerts). Rewrite these to 429 with
 // a Retry-After header so the client does proper backoff.
-function parseFactoryResetAfter(text) {
-  const m = text.match(/reset after (?:(\d+)m\s*)?(?:(\d+)s)?/i);
-  if (!m) return null;
-  const minutes = parseInt(m[1] || "0", 10);
-  const seconds = parseInt(m[2] || "0", 10);
-  const total = minutes * 60 + seconds;
-  return total > 0 ? total : null;
-}
-
 export class FactoryDroidExecutor extends BaseExecutor {
   constructor() {
     super("factory-droid", PROVIDERS["factory-droid"]);
   }
 
   async execute(args) {
-    // Reject unknown Factory model IDs upstream of the network call. Without
-    // this, our lookupModel() used to silently fall back to claude-opus-4-7's
-    // family/api_provider while still passing the original (invalid) model ID
-    // in the body — Factory then rejected it as 400 "Invalid model ID" and
-    // OpenClaw treated that as an upstream failure rather than a config bug.
     if (!lookupModel(args?.model)) {
       throw new FactoryUnknownModelError(args?.model);
     }
-
-    const result = await super.execute(args);
-    const r = result?.response;
-    if (!r || r.status !== 403) return result;
-
-    // Factory's 403 body is a generic "Forbidden" payload — the rate-limit
-    // duration is conveyed via Retry-After / X-RateLimit-Reset-After
-    // headers, NOT via "reset after Xs" text in the body.
-    const cloned = r.clone();
-    const text = await cloned.text();
-    let retryAfterSec =
-      parseFactoryResetAfter(text)
-      || parseInt(r.headers.get("retry-after") || "0", 10)
-      || parseInt(r.headers.get("x-ratelimit-reset-after") || "0", 10);
-
-    // Last resort: derive from x-ratelimit-reset (epoch seconds).
-    if (!retryAfterSec) {
-      const resetEpoch = parseInt(r.headers.get("x-ratelimit-reset") || "0", 10);
-      if (resetEpoch > 0) {
-        retryAfterSec = Math.max(1, Math.ceil((resetEpoch * 1000 - Date.now()) / 1000));
-      }
-    }
-
-    // Distinguish a real auth failure (no rate-limit signal anywhere) from
-    // a transient throttle. Real auth failures surface as 403; throttles
-    // become 429 with Retry-After so OpenClaw treats them as rate_limit
-    // (transient → fall back) instead of auth (terminal → surface error).
-    if (!retryAfterSec) {
-      // Default to 30s when 9router has independent reason to believe this
-      // is a Factory throttle (e.g. body lacks "Forbidden" or contains the
-      // Factory request-id pattern). Plain 403 with no signal → preserve.
-      const looksLikeFactoryThrottle = /requestId":"sfo\d/i.test(text);
-      if (!looksLikeFactoryThrottle) return result;
-      retryAfterSec = 30;
-    }
-
-    const headers = new Headers(r.headers);
-    headers.set("Retry-After", String(retryAfterSec));
-    headers.set("X-Factory-Original-Status", "403");
-    console.log(`[factory-droid] rewriting 403 → 429 with Retry-After=${retryAfterSec}s`);
-    return {
-      ...result,
-      response: new Response(text, { status: 429, statusText: "Too Many Requests", headers }),
-    };
+    return super.execute(args);
   }
 
   buildUrl(model) {
