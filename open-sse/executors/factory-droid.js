@@ -196,9 +196,42 @@ function hoistGeminiSystemInstruction(body) {
   return { ...rest, contents };
 }
 
+// Factory returns 403 with body like:
+//   {"detail":"Forbidden","status":403, ... "(reset after 1m 28s)"}
+// for transient rate limits. LiteLLM treats 403 as a permanent failure
+// (no retry, no fallback, fires outage alerts). Rewrite these to 429 with
+// a Retry-After header so the client does proper backoff.
+function parseFactoryResetAfter(text) {
+  const m = text.match(/reset after (?:(\d+)m\s*)?(?:(\d+)s)?/i);
+  if (!m) return null;
+  const minutes = parseInt(m[1] || "0", 10);
+  const seconds = parseInt(m[2] || "0", 10);
+  const total = minutes * 60 + seconds;
+  return total > 0 ? total : null;
+}
+
 export class FactoryDroidExecutor extends BaseExecutor {
   constructor() {
     super("factory-droid", PROVIDERS["factory-droid"]);
+  }
+
+  async execute(args) {
+    const result = await super.execute(args);
+    const r = result?.response;
+    if (!r || r.status !== 403) return result;
+
+    const cloned = r.clone();
+    const text = await cloned.text();
+    const retryAfterSec = parseFactoryResetAfter(text);
+    if (!retryAfterSec) return result;
+
+    const headers = new Headers(r.headers);
+    headers.set("Retry-After", String(retryAfterSec));
+    headers.set("X-Factory-Original-Status", "403");
+    return {
+      ...result,
+      response: new Response(text, { status: 429, statusText: "Too Many Requests", headers }),
+    };
   }
 
   buildUrl(model) {
