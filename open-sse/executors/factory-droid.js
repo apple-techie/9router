@@ -158,6 +158,10 @@ function hoistOpenAIResponses(body) {
     result = { ...rest, max_output_tokens: max_tokens };
   }
 
+  if (typeof result.max_output_tokens === "number" && result.max_output_tokens < 16) {
+    result = { ...result, max_output_tokens: 16 };
+  }
+
   const instructions = typeof result.instructions === "string" ? result.instructions.trim() : "";
   if (!instructions) return result;
 
@@ -189,21 +193,26 @@ function hoistOpenAIResponses(body) {
 function stripGeminiFunctionIds(body) {
   if (!Array.isArray(body?.contents)) return body;
   let mutated = false;
+  const stripIdField = (obj) => {
+    if (!obj || !("id" in obj)) return null;
+    const { id: _id, ...rest } = obj;
+    return rest;
+  };
   const contents = body.contents.map(c => {
     if (!Array.isArray(c?.parts)) return c;
     let partsMutated = false;
     const parts = c.parts.map(p => {
-      if (p?.functionCall && "id" in p.functionCall) {
-        const { id: _id, ...rest } = p.functionCall;
-        partsMutated = true; mutated = true;
-        return { ...p, functionCall: rest };
+      if (!p || typeof p !== "object") return p;
+      let next = p;
+      for (const key of ["functionCall", "function_call"]) {
+        const stripped = stripIdField(next?.[key]);
+        if (stripped) { next = { ...next, [key]: stripped }; partsMutated = true; mutated = true; }
       }
-      if (p?.functionResponse && "id" in p.functionResponse) {
-        const { id: _id, ...rest } = p.functionResponse;
-        partsMutated = true; mutated = true;
-        return { ...p, functionResponse: rest };
+      for (const key of ["functionResponse", "function_response"]) {
+        const stripped = stripIdField(next?.[key]);
+        if (stripped) { next = { ...next, [key]: stripped }; partsMutated = true; mutated = true; }
       }
-      return p;
+      return next;
     });
     return partsMutated ? { ...c, parts } : c;
   });
