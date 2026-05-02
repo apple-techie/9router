@@ -1,6 +1,6 @@
 import { PROVIDER_MODELS, PROVIDER_ID_TO_ALIAS } from "@/shared/constants/models";
 import { getProviderAlias, isAnthropicCompatibleProvider, isOpenAICompatibleProvider } from "@/shared/constants/providers";
-import { getProviderConnections, getCombos } from "@/lib/localDb";
+import { getProviderConnections, getCombos, getModelAliases, getCustomModels } from "@/lib/localDb";
 
 const parseOpenAIStyleModels = (data) => {
   if (Array.isArray(data)) return data;
@@ -205,6 +205,40 @@ export async function GET() {
           });
         }
       }
+    }
+
+    // Surface user-defined model aliases (set via dashboard / setModelAlias).
+    // Each alias `X → provider/Y` is published as both `X` (the alias name
+    // the client uses) and the canonical `provider/Y` form so callers can
+    // discover them either way without needing the rewrite to be in source.
+    let aliasMap = {};
+    try { aliasMap = await getModelAliases(); } catch { /* DB unavailable */ }
+    const seenIds = new Set(models.map((m) => m.id));
+    for (const [alias, target] of Object.entries(aliasMap || {})) {
+      if (typeof alias !== "string" || typeof target !== "string") continue;
+      const ownedBy = target.includes("/") ? target.slice(0, target.indexOf("/")) : "alias";
+      for (const id of [alias, target]) {
+        if (seenIds.has(id)) continue;
+        seenIds.add(id);
+        models.push({
+          id, object: "model", created: timestamp,
+          owned_by: ownedBy, permission: [], root: target, parent: null,
+        });
+      }
+    }
+
+    // Surface customModels (dashboard-added entries with explicit provider+id).
+    let customModels = [];
+    try { customModels = await getCustomModels(); } catch { /* DB unavailable */ }
+    for (const m of customModels || []) {
+      if (!m?.providerAlias || !m?.id) continue;
+      const id = `${m.providerAlias}/${m.id}`;
+      if (seenIds.has(id)) continue;
+      seenIds.add(id);
+      models.push({
+        id, object: "model", created: timestamp,
+        owned_by: m.providerAlias, permission: [], root: m.id, parent: null,
+      });
     }
 
     return Response.json({
