@@ -57,7 +57,16 @@ const MODEL_CATALOG = {
 };
 
 function lookupModel(model) {
-  return MODEL_CATALOG[model] || MODEL_CATALOG["claude-opus-4-7"];
+  return MODEL_CATALOG[model] || null;
+}
+
+class FactoryUnknownModelError extends Error {
+  constructor(model) {
+    super(`Unknown Factory model: ${model}. See /v1/models for the supported list.`);
+    this.name = "FactoryUnknownModelError";
+    this.status = 404;
+    this.model = model;
+  }
 }
 
 // Factory uses "System instructions:\n\n..." as a hoisting prefix so the
@@ -216,6 +225,15 @@ export class FactoryDroidExecutor extends BaseExecutor {
   }
 
   async execute(args) {
+    // Reject unknown Factory model IDs upstream of the network call. Without
+    // this, our lookupModel() used to silently fall back to claude-opus-4-7's
+    // family/api_provider while still passing the original (invalid) model ID
+    // in the body — Factory then rejected it as 400 "Invalid model ID" and
+    // OpenClaw treated that as an upstream failure rather than a config bug.
+    if (!lookupModel(args?.model)) {
+      throw new FactoryUnknownModelError(args?.model);
+    }
+
     const result = await super.execute(args);
     const r = result?.response;
     if (!r || r.status !== 403) return result;
